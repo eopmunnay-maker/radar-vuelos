@@ -1,0 +1,7 @@
+requests>=2.31
+matplotlib>=3.8
+
+# Opcional: solo si quieres crear eventos directamente vía Google Calendar API
+# (sin esto, el agente genera un enlace "Agregar a Google Calendar")
+# google-api-python-client
+# google-auth-oauthlib

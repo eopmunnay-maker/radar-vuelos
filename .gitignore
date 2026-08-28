@@ -1,0 +1,7 @@
+.env
+radar.db
+token.json
+credentials.json
+*.png
+__pycache__/
+*.pyc
