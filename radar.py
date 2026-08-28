@@ -240,6 +240,13 @@ def cmd_panel(args):
 
     servidor = ThreadingHTTPServer(("127.0.0.1", args.puerto), Manejador)
     print(f"📊 Panel disponible en http://127.0.0.1:{args.puerto}  (Ctrl+C para detener)")
+
+    # el mismo panel enciende el bot conversacional de Telegram
+    from config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+    if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
+        import threading
+        threading.Thread(target=bucle_escuchar, daemon=True).start()
+        print("🤖 Bot de Telegram activo: pregúntale por vuelos desde tu celular")
     try:
         servidor.serve_forever()
     except KeyboardInterrupt:
@@ -380,6 +387,11 @@ def cmd_escuchar(args):
     print('   "búscame un vuelo a jamaica"')
     print('   "vuelo de LIM a CUZ el 2026-09-15"')
     print("   Ctrl+C para detener\n")
+    bucle_escuchar()
+
+
+def bucle_escuchar():
+    """Bucle del bot: recibe preguntas por Telegram y las responde."""
     offset = 0
     while True:
         try:
