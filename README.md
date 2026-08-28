@@ -19,8 +19,8 @@ Calendar** cuando el usuario decide viajar.
 ## Instalación
 
 ```bash
-git clone https://github.com/griselosorio216-cpu/radar-vue.git
-cd radar-vue
+git clone https://github.com/eopmunnay-maker/radar-vuelos.git
+cd radar-vuelos
 pip install -r requirements.txt
 cp .env.example .env   # y completa tus credenciales (opcional)
 ```
