@@ -156,8 +156,15 @@ def cmd_panel(args):
             url = urlparse(self.path)
             if url.path == "/api/historial":
                 q = parse_qs(url.query)
-                filas = db.historial(q.get("origen", ["LIM"])[0],
-                                     q.get("destino", ["CUZ"])[0])
+
+                def codigo(valor):
+                    try:
+                        return a_iata(valor)
+                    except SystemExit:
+                        return valor.strip().upper()
+
+                filas = db.historial(codigo(q.get("origen", ["LIM"])[0]),
+                                     codigo(q.get("destino", ["CUZ"])[0]))
                 moneda = filas[-1]["moneda"] if filas else "USD"
                 cuerpo = json.dumps({"historial": filas, "moneda": moneda}).encode()
                 self._responder(cuerpo, "application/json; charset=utf-8")

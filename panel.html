@@ -23,7 +23,7 @@
     background: var(--tarjeta); border: 1px solid var(--borde); color: var(--texto);
     border-radius: 10px; padding: 12px 14px; font-size: 15px;
   }
-  input { width: 130px; text-transform: uppercase; }
+  input { width: 170px; text-transform: uppercase; }
   button { background: var(--acento); color: #06101f; font-weight: 700; cursor: pointer; border: 0; padding: 12px 22px; }
   .tarjetas { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 18px; }
   .tarjeta { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 14px; padding: 16px; }
@@ -46,8 +46,8 @@
   <div class="sub">Histórico guardado en SQLite por el agente — Travelpayouts · Telegram · Google Calendar</div>
 
   <form id="filtro">
-    <input id="origen" value="LIM" maxlength="3" aria-label="Origen">
-    <input id="destino" value="CUZ" maxlength="3" aria-label="Destino">
+    <input id="origen" value="LIM" placeholder="lima o LIM" aria-label="Origen">
+    <input id="destino" value="CUZ" placeholder="cusco o CUZ" aria-label="Destino">
     <button>Ver ruta</button>
   </form>
 
@@ -60,7 +60,7 @@
 async function cargar() {
   const o = document.getElementById("origen").value.trim().toUpperCase() || "LIM";
   const d = document.getElementById("destino").value.trim().toUpperCase() || "CUZ";
-  const r = await fetch(`/api/historial?origen=${o}&destino=${d}`);
+  const r = await fetch(`/api/historial?origen=${encodeURIComponent(o)}&destino=${encodeURIComponent(d)}`);
   const datos = await r.json();
   const filas = datos.historial || [];
   pintarTarjetas(filas, datos.moneda);
