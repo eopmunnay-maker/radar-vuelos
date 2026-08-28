@@ -14,7 +14,7 @@ Calendar** cuando el usuario decide viajar.
 - 📈 **Visualización** de la evolución de precios (gráfico PNG, enviable por Telegram).
 - 🚨 **Alertas automáticas** por bot de Telegram cuando el precio baja del umbral o cae ≥5%.
 - 🤖 **Bot conversacional**: pregúntale en lenguaje natural ("búscame un vuelo a jamaica") y responde con precios reales, guardando la consulta en el histórico.
-- 🗓️ **Google Calendar**: al decidir viajar, el agente propone el evento (enlace directo, o creación automática vía API si configuras credenciales).
+- 🗓️ **Google Calendar**: al decidir viajar, el agente **crea el evento vía la API oficial** (cuenta de servicio de Google Cloud); sin credenciales, propone un enlace pre-llenado para confirmar con un clic.
 - 🧪 **Modo demo**: sin API keys genera precios simulados para probar todo el flujo.
 
 ## Instalación
@@ -80,7 +80,8 @@ vigilar → Travelpayouts API → guardar en SQLite → ¿precio ≤ umbral o ba
 | Travelpayouts | `TRAVELPAYOUTS_TOKEN` | app.travelpayouts.com → perfil → API token |
 | Telegram | `TELEGRAM_BOT_TOKEN` | @BotFather → `/newbot` |
 | Telegram | `TELEGRAM_CHAT_ID` | `https://api.telegram.org/bot<TOKEN>/getUpdates` |
-| Google Calendar (opcional) | `credentials.json` | Google Cloud Console → OAuth Desktop |
+| Google Calendar (API) | `service_account.json` + `GOOGLE_CALENDAR_ID` | Google Cloud → cuenta de servicio; comparte tu calendario con ella ("Hacer cambios en eventos") |
+| Google Calendar (OAuth, alternativo) | `credentials.json` | Google Cloud Console → OAuth Desktop |
 
 Sin credenciales el agente **sigue funcionando en modo demo** (precios
 simulados y alertas impresas en consola), ideal para la demostración.

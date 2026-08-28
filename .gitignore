@@ -2,6 +2,7 @@
 radar.db
 token.json
 credentials.json
+service_account.json
 *.png
 __pycache__/
 *.pyc
