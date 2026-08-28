@@ -8,119 +8,215 @@
   :root {
     --fondo: #0b1220; --tarjeta: #131c2e; --borde: #223049;
     --texto: #e8eefb; --sutil: #8ea3c4; --acento: #4da3ff; --ok: #3ddc84;
+    --alerta: #ff5d5d; --ambar: #ffc24d;
   }
   * { box-sizing: border-box; margin: 0; }
   body {
     background: var(--fondo); color: var(--texto); min-height: 100vh;
-    font-family: -apple-system, "Segoe UI", Roboto, sans-serif; padding: 32px 20px;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif; padding: 32px 20px 60px;
   }
-  .contenedor { max-width: 980px; margin: 0 auto; }
+  .contenedor { max-width: 1000px; margin: 0 auto; }
   .etiqueta { color: var(--ok); letter-spacing: 2px; font-size: 12px; font-weight: 700; }
-  h1 { font-size: 42px; margin: 6px 0 4px; }
+  h1 { font-size: 40px; margin: 6px 0 4px; }
   .sub { color: var(--sutil); margin-bottom: 24px; }
-  form { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 22px; }
-  input, button {
-    background: var(--tarjeta); border: 1px solid var(--borde); color: var(--texto);
+  .fila { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  input, select {
+    background: var(--fondo); border: 1px solid var(--borde); color: var(--texto);
     border-radius: 10px; padding: 12px 14px; font-size: 15px;
   }
-  input { width: 170px; text-transform: uppercase; }
-  button { background: var(--acento); color: #06101f; font-weight: 700; cursor: pointer; border: 0; padding: 12px 22px; }
-  .tarjetas { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 18px; }
-  .tarjeta { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 14px; padding: 16px; }
+  input.ciudad { width: 160px; text-transform: uppercase; }
+  input.fecha { width: 165px; }
+  input.numero { width: 110px; }
+  button {
+    background: var(--acento); color: #06101f; font-weight: 700; cursor: pointer;
+    border: 0; border-radius: 10px; padding: 12px 20px; font-size: 15px;
+  }
+  button.rojo { background: var(--alerta); color: #fff; }
+  button.verde { background: var(--ok); color: #06231a; }
+  button:disabled { opacity: .5; cursor: wait; }
+  .caja { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 16px; padding: 20px; margin-bottom: 18px; }
+  .caja h2 { font-size: 17px; margin-bottom: 4px; }
+  .caja .desc { color: var(--sutil); font-size: 13px; margin-bottom: 14px; }
+  .tarjetas { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 14px 0; }
+  .tarjeta { background: var(--fondo); border: 1px solid var(--borde); border-radius: 12px; padding: 14px; }
   .tarjeta .titulo { color: var(--sutil); font-size: 12px; margin-bottom: 6px; }
-  .tarjeta .valor { font-size: 24px; font-weight: 800; }
+  .tarjeta .valor { font-size: 22px; font-weight: 800; }
   .tarjeta .valor.verde { color: var(--ok); }
-  .caja { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 14px; padding: 18px; margin-bottom: 18px; }
-  .caja h2 { font-size: 15px; margin-bottom: 12px; color: var(--sutil); font-weight: 600; }
   svg text { fill: var(--sutil); font-size: 11px; }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px; }
   th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--borde); }
   th { color: var(--sutil); font-weight: 600; font-size: 12px; }
-  .aviso { color: var(--sutil); padding: 20px; text-align: center; }
+  .resultado { margin-top: 14px; }
+  .mensaje { border-radius: 12px; padding: 14px 16px; margin-top: 12px; font-size: 15px; line-height: 1.5; }
+  .mensaje.exito { background: #10321f; border: 1px solid #1d5c38; }
+  .mensaje.aviso { background: #33260f; border: 1px solid #6b4f1d; }
+  .mensaje.rojo { background: #391418; border: 1px solid #7c2a33; }
+  a { color: var(--acento); }
+  .pill { display: inline-block; background: var(--fondo); border: 1px solid var(--borde); border-radius: 99px; padding: 3px 10px; font-size: 12px; color: var(--sutil); margin-left: 8px; }
 </style>
 </head>
 <body>
 <div class="contenedor">
-  <div class="etiqueta">RADAR DE VUELOS · PANEL</div>
-  <h1>Evolución de precios ✈️</h1>
-  <div class="sub">Histórico guardado en SQLite por el agente — Travelpayouts · Telegram · Google Calendar</div>
+  <div class="etiqueta">RADAR DE VUELOS · AGENTE DE PRECIOS</div>
+  <h1>Radar de Vuelos ✈️</h1>
+  <div class="sub">Travelpayouts (precios reales) · SQLite (histórico) · Telegram (alertas) · Google Calendar (eventos)</div>
 
-  <form id="filtro">
-    <input id="origen" value="LIM" placeholder="lima o LIM" aria-label="Origen">
-    <input id="destino" value="CUZ" placeholder="cusco o CUZ" aria-label="Destino">
-    <button>Ver ruta</button>
-  </form>
+  <!-- RUTA -->
+  <div class="caja">
+    <h2>1 · Elige tu ruta 🔎</h2>
+    <div class="desc">Escribe ciudades (lima, cusco, miami…) o códigos IATA. La fecha es opcional.</div>
+    <div class="fila">
+      <input id="origen" class="ciudad" value="lima" placeholder="Origen">
+      <input id="destino" class="ciudad" value="cusco" placeholder="Destino">
+      <input id="fecha" class="fecha" type="date" value="2026-09-15">
+      <button id="btnBuscar">Buscar precios</button>
+    </div>
+    <div id="resBuscar" class="resultado"></div>
+  </div>
 
-  <div class="tarjetas" id="tarjetas"></div>
-  <div class="caja"><h2 id="tituloGrafico">Evolución del precio mínimo</h2><div id="grafico" class="aviso">Cargando…</div></div>
-  <div class="caja"><h2>Últimas consultas</h2><div id="tabla" class="aviso">Cargando…</div></div>
+  <!-- EVOLUCIÓN -->
+  <div class="caja">
+    <h2>2 · Histórico y evolución 📈 <span class="pill">guardado en SQLite</span></h2>
+    <div class="desc">Cada búsqueda queda registrada; aquí ves cómo cambia el precio en el tiempo.</div>
+    <div id="tarjetas" class="tarjetas"></div>
+    <div id="grafico"></div>
+    <div id="tabla"></div>
+  </div>
+
+  <!-- ALERTA -->
+  <div class="caja">
+    <h2>3 · Alerta por Telegram 🚨</h2>
+    <div class="desc">El agente consulta el precio y, si está por debajo de tu umbral, te avisa al Telegram.</div>
+    <div class="fila">
+      <label for="umbral" style="color:var(--sutil)">Avisarme si baja de:</label>
+      <input id="umbral" class="numero" type="number" value="50"> <span style="color:var(--sutil)">USD</span>
+      <button id="btnAlerta" class="rojo">Vigilar ahora</button>
+    </div>
+    <div id="resAlerta" class="resultado"></div>
+  </div>
+
+  <!-- CALENDAR -->
+  <div class="caja">
+    <h2>4 · ¡Decidí viajar! 🗓️</h2>
+    <div class="desc">El agente crea el evento del viaje directamente en tu Google Calendar (API oficial).</div>
+    <button id="btnViajar" class="verde">Crear evento en mi Google Calendar</button>
+    <div id="resViajar" class="resultado"></div>
+  </div>
 </div>
 
 <script>
-async function cargar() {
-  const o = document.getElementById("origen").value.trim().toUpperCase() || "LIM";
-  const d = document.getElementById("destino").value.trim().toUpperCase() || "CUZ";
-  const r = await fetch(`/api/historial?origen=${encodeURIComponent(o)}&destino=${encodeURIComponent(d)}`);
+const $ = id => document.getElementById(id);
+const ruta = () => `origen=${encodeURIComponent($("origen").value.trim())}&destino=${encodeURIComponent($("destino").value.trim())}` +
+                   ($("fecha").value ? `&fecha=${$("fecha").value}` : "");
+const fmtF = t => t.slice(0, 16).replace("T", " ");
+
+async function llamar(boton, url) {
+  boton.disabled = true;
+  try {
+    const r = await fetch(url);
+    return await r.json();
+  } catch (e) {
+    return { error: String(e) };
+  } finally { boton.disabled = false; }
+}
+
+// --- 1. BUSCAR ---
+$("btnBuscar").addEventListener("click", async () => {
+  $("resBuscar").innerHTML = '<div class="mensaje aviso">Consultando Travelpayouts…</div>';
+  const d = await llamar($("btnBuscar"), `/api/buscar?${ruta()}`);
+  if (d.error) { $("resBuscar").innerHTML = `<div class="mensaje rojo">⚠️ ${d.error}</div>`; return; }
+  if (!d.vuelos.length) {
+    $("resBuscar").innerHTML = `<div class="mensaje aviso">😕 Sin precios para ${d.origen} → ${d.destino} en esa fecha (esta API usa tarifas buscadas recientemente). Prueba otra fecha o ruta.</div>`;
+    return;
+  }
+  const filas = d.vuelos.map(v => `<tr><td>${v.fecha_salida}</td><td><b>${Math.round(v.precio)} ${v.moneda}</b></td>
+    <td>${v.aerolinea ?? "—"}</td><td>${v.escalas ?? "—"}</td>
+    <td>${v.link ? `<a href="${v.link}" target="_blank">ver vuelo</a>` : ""}</td></tr>`).join("");
+  $("resBuscar").innerHTML = `<div class="mensaje exito">✅ ${d.vuelos.length} precios reales de <b>${d.origen} → ${d.destino}</b>, guardados en el histórico.</div>
+    <table><tr><th>Fecha</th><th>Precio</th><th>Aerolínea</th><th>Escalas</th><th></th></tr>${filas}</table>`;
+  cargarEvolucion();
+});
+
+// --- 2. EVOLUCIÓN ---
+async function cargarEvolucion() {
+  const r = await fetch(`/api/historial?${ruta()}`);
   const datos = await r.json();
   const filas = datos.historial || [];
   pintarTarjetas(filas, datos.moneda);
-  pintarGrafico(filas, o, d);
+  pintarGrafico(filas);
   pintarTabla(filas);
 }
 
 function pintarTarjetas(filas, moneda) {
-  const cont = document.getElementById("tarjetas");
-  if (!filas.length) { cont.innerHTML = ""; return; }
-  const precios = filas.map(f => f.precio);
-  const ultimo = filas[filas.length - 1].precio;
+  if (!filas.length) { $("tarjetas").innerHTML = ""; return; }
+  const p = filas.map(f => f.precio);
   const fmt = v => `${Math.round(v)} ${moneda || "USD"}`;
-  cont.innerHTML = `
-    <div class="tarjeta"><div class="titulo">Último precio</div><div class="valor verde">${fmt(ultimo)}</div></div>
-    <div class="tarjeta"><div class="titulo">Mínimo</div><div class="valor">${fmt(Math.min(...precios))}</div></div>
-    <div class="tarjeta"><div class="titulo">Máximo</div><div class="valor">${fmt(Math.max(...precios))}</div></div>
-    <div class="tarjeta"><div class="titulo">Promedio</div><div class="valor">${fmt(precios.reduce((a,b)=>a+b,0)/precios.length)}</div></div>
+  $("tarjetas").innerHTML = `
+    <div class="tarjeta"><div class="titulo">Último precio</div><div class="valor verde">${fmt(p[p.length-1])}</div></div>
+    <div class="tarjeta"><div class="titulo">Mínimo</div><div class="valor">${fmt(Math.min(...p))}</div></div>
+    <div class="tarjeta"><div class="titulo">Máximo</div><div class="valor">${fmt(Math.max(...p))}</div></div>
+    <div class="tarjeta"><div class="titulo">Promedio</div><div class="valor">${fmt(p.reduce((a,b)=>a+b,0)/p.length)}</div></div>
     <div class="tarjeta"><div class="titulo">Consultas</div><div class="valor">${filas.length}</div></div>`;
 }
 
-function pintarGrafico(filas, o, d) {
-  document.getElementById("tituloGrafico").textContent = `Evolución del precio mínimo · ${o} → ${d}`;
-  const cont = document.getElementById("grafico");
-  // precio mínimo por momento de consulta
+function pintarGrafico(filas) {
   const porMomento = {};
   for (const f of filas) porMomento[f.consultado_en] = Math.min(porMomento[f.consultado_en] ?? Infinity, f.precio);
   const puntos = Object.entries(porMomento).map(([t, p]) => ({ t, p }));
-  if (puntos.length < 2) { cont.innerHTML = '<div class="aviso">Aún hay pocas consultas para graficar — usa "buscar" o "vigilar" varias veces.</div>'; return; }
-
-  const W = 900, H = 300, m = { i: 55, d: 15, s: 15, b: 40 };
+  if (puntos.length < 2) { $("grafico").innerHTML = ""; return; }
+  const W = 920, H = 280, m = { i: 55, d: 15, s: 15, b: 40 };
   const xs = puntos.map((_, i) => m.i + i * (W - m.i - m.d) / (puntos.length - 1));
   const min = Math.min(...puntos.map(q => q.p)), max = Math.max(...puntos.map(q => q.p));
   const rango = (max - min) || 1;
   const y = v => m.s + (H - m.s - m.b) * (1 - (v - min) / rango);
   const linea = puntos.map((q, i) => `${xs[i]},${y(q.p).toFixed(1)}`).join(" ");
-  const area = `${m.i},${H - m.b} ${linea} ${xs[xs.length-1]},${H - m.b}`;
+  const area = `${m.i},${H-m.b} ${linea} ${xs[xs.length-1]},${H-m.b}`;
   const ejes = [min, (min+max)/2, max].map(v =>
     `<text x="8" y="${(y(v)+4).toFixed(1)}">${Math.round(v)}</text>
      <line x1="${m.i}" x2="${W-m.d}" y1="${y(v)}" y2="${y(v)}" stroke="#223049" stroke-dasharray="3 4"/>`).join("");
-  const fechas = [0, puntos.length - 1].map(i =>
-    `<text x="${xs[i]}" y="${H-12}" text-anchor="${i ? "end" : "start"}">${puntos[i].t.slice(0,16).replace("T"," ")}</text>`).join("");
+  const fechas = [0, puntos.length-1].map(i =>
+    `<text x="${xs[i]}" y="${H-12}" text-anchor="${i ? "end" : "start"}">${fmtF(puntos[i].t)}</text>`).join("");
   const marcas = puntos.map((q, i) =>
     `<circle cx="${xs[i]}" cy="${y(q.p).toFixed(1)}" r="4" fill="#4da3ff"><title>${q.t}: ${q.p}</title></circle>`).join("");
-  cont.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%">
+  $("grafico").innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%">
     ${ejes}<polygon points="${area}" fill="#4da3ff22"/>
     <polyline points="${linea}" fill="none" stroke="#4da3ff" stroke-width="2.5"/>${marcas}${fechas}</svg>`;
 }
 
 function pintarTabla(filas) {
-  const cont = document.getElementById("tabla");
-  if (!filas.length) { cont.innerHTML = '<div class="aviso">Sin consultas para esta ruta todavía.</div>'; return; }
-  const ult = filas.slice(-12).reverse();
-  cont.innerHTML = `<table><tr><th>Consultado</th><th>Vuelo del</th><th>Precio</th><th>Aerolínea</th><th>Escalas</th></tr>` +
-    ult.map(f => `<tr><td>${f.consultado_en.slice(0,16).replace("T"," ")}</td><td>${f.fecha_salida}</td>
+  if (!filas.length) { $("tabla").innerHTML = '<div class="mensaje aviso">Aún no hay consultas para esta ruta — usa "Buscar precios" arriba.</div>'; return; }
+  const ult = filas.slice(-8).reverse();
+  $("tabla").innerHTML = `<table><tr><th>Consultado</th><th>Vuelo del</th><th>Precio</th><th>Aerolínea</th><th>Escalas</th></tr>` +
+    ult.map(f => `<tr><td>${fmtF(f.consultado_en)}</td><td>${f.fecha_salida}</td>
       <td><b>${Math.round(f.precio)} ${f.moneda}</b></td><td>${f.aerolinea ?? "—"}</td><td>${f.escalas ?? "—"}</td></tr>`).join("") + "</table>";
 }
 
-document.getElementById("filtro").addEventListener("submit", e => { e.preventDefault(); cargar(); });
-cargar();
+// --- 3. ALERTA ---
+$("btnAlerta").addEventListener("click", async () => {
+  $("resAlerta").innerHTML = '<div class="mensaje aviso">Consultando precio y evaluando umbral…</div>';
+  const d = await llamar($("btnAlerta"), `/api/alerta?${ruta()}&umbral=${encodeURIComponent($("umbral").value || 0)}`);
+  if (d.error) { $("resAlerta").innerHTML = `<div class="mensaje rojo">⚠️ ${d.error}</div>`; return; }
+  if (!d.mejor) { $("resAlerta").innerHTML = '<div class="mensaje aviso">😕 Sin precios para evaluar en esta ruta/fecha.</div>'; return; }
+  const p = `${Math.round(d.mejor.precio)} ${d.mejor.moneda}`;
+  $("resAlerta").innerHTML = d.disparada
+    ? `<div class="mensaje exito">🚨 <b>¡Oportunidad!</b> Precio actual <b>${p}</b> ≤ umbral (${Math.round(d.umbral)}).
+       ${d.telegram ? "La alerta <b>ya llegó a tu Telegram</b> 📲" : "(Telegram no configurado: alerta mostrada aquí)"}</div>`
+    : `<div class="mensaje aviso">Precio actual: <b>${p}</b> — sigue por encima de tu umbral (${Math.round(d.umbral)}). Sin alerta.</div>`;
+  cargarEvolucion();
+});
+
+// --- 4. VIAJAR ---
+$("btnViajar").addEventListener("click", async () => {
+  $("resViajar").innerHTML = '<div class="mensaje aviso">Creando el evento en Google Calendar…</div>';
+  const d = await llamar($("btnViajar"), `/api/viajar?${ruta()}`);
+  if (d.error) { $("resViajar").innerHTML = `<div class="mensaje rojo">⚠️ ${d.error}</div>`; return; }
+  $("resViajar").innerHTML = d.evento_api
+    ? `<div class="mensaje exito">✅ <b>Evento creado en tu Google Calendar</b> para el ${d.fecha} (${Math.round(d.precio)} ${d.moneda}).
+       <a href="${d.evento_api}" target="_blank">Abrir el evento</a> 🗓️</div>`
+    : `<div class="mensaje exito">🗓️ Propuesta lista: <a href="${d.enlace}" target="_blank">agregar el viaje del ${d.fecha} a Google Calendar</a> (pulsa Guardar para confirmar).</div>`;
+});
+
+cargarEvolucion();
 </script>
 </body>
 </html>

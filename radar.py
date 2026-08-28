@@ -152,27 +152,91 @@ def cmd_panel(args):
             self.end_headers()
             self.wfile.write(cuerpo)
 
+        def _json(self, datos: dict, estado: int = 200):
+            cuerpo = json.dumps(datos).encode()
+            self.send_response(estado)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(cuerpo)))
+            self.end_headers()
+            self.wfile.write(cuerpo)
+
         def do_GET(self):
             url = urlparse(self.path)
-            if url.path == "/api/historial":
-                q = parse_qs(url.query)
+            q = parse_qs(url.query)
 
-                def codigo(valor):
-                    try:
-                        return a_iata(valor)
-                    except SystemExit:
-                        return valor.strip().upper()
+            def codigo(clave, defecto):
+                valor = q.get(clave, [defecto])[0]
+                try:
+                    return a_iata(valor)
+                except SystemExit:
+                    return valor.strip().upper()
 
-                filas = db.historial(codigo(q.get("origen", ["LIM"])[0]),
-                                     codigo(q.get("destino", ["CUZ"])[0]))
-                moneda = filas[-1]["moneda"] if filas else "USD"
-                cuerpo = json.dumps({"historial": filas, "moneda": moneda}).encode()
-                self._responder(cuerpo, "application/json; charset=utf-8")
-            elif url.path in ("/", "/panel.html"):
-                self._responder(panel_path.read_bytes(), "text/html; charset=utf-8")
-            else:
-                self.send_response(404)
-                self.end_headers()
+            def parametros():
+                return (codigo("origen", "LIM"), codigo("destino", "CUZ"),
+                        q.get("fecha", [None])[0] or None)
+
+            try:
+                if url.path == "/api/historial":
+                    filas = db.historial(codigo("origen", "LIM"), codigo("destino", "CUZ"))
+                    moneda = filas[-1]["moneda"] if filas else "USD"
+                    self._json({"historial": filas, "moneda": moneda})
+
+                elif url.path == "/api/buscar":
+                    origen, destino, fecha = parametros()
+                    vuelos = travelpayouts.buscar_vuelos(origen, destino, fecha)
+                    for v in vuelos:
+                        db.guardar_precio(v)
+                    self._json({"vuelos": vuelos, "origen": origen, "destino": destino})
+
+                elif url.path == "/api/alerta":
+                    origen, destino, fecha = parametros()
+                    umbral = float(q.get("umbral", ["0"])[0] or 0)
+                    vuelos = travelpayouts.buscar_vuelos(origen, destino, fecha, limite=3)
+                    disparada, enviada, mejor = False, False, None
+                    if vuelos:
+                        mejor = vuelos[0]
+                        for v in vuelos:
+                            db.guardar_precio(v)
+                        disparada = bool(umbral) and mejor["precio"] <= umbral
+                        if disparada:
+                            enviada = telegram_bot.enviar_mensaje(
+                                f"🚨 <b>¡Alerta de precio!</b> ✈️\n"
+                                f"{origen} → {destino}"
+                                + (f" el {fecha}" if fecha else "") + "\n"
+                                f"💰 <b>{mejor['precio']:.0f} {mejor['moneda']}</b> "
+                                f"({mejor['aerolinea']}, {mejor['escalas']} escalas)\n"
+                                f"📌 Precio ≤ umbral ({umbral:.0f})\n"
+                                + (f"🔗 {mejor['link']}" if mejor.get("link") else ""))
+                    self._json({"mejor": mejor, "disparada": disparada,
+                                "telegram": enviada, "umbral": umbral})
+
+                elif url.path == "/api/viajar":
+                    origen, destino, fecha = parametros()
+                    ultimo = db.ultimo_precio(origen, destino, fecha) if fecha else None
+                    if not ultimo:
+                        vuelos = travelpayouts.buscar_vuelos(origen, destino, fecha, limite=1)
+                        if not vuelos:
+                            self._json({"error": "No hay precios para esa ruta/fecha."}, 400)
+                            return
+                        db.guardar_precio(vuelos[0])
+                        ultimo = vuelos[0]
+                        fecha = ultimo["fecha_salida"]
+                    fecha = fecha or ultimo["fecha_salida"]
+                    evento = calendario.crear_evento_api(origen, destino, fecha,
+                                                         ultimo["precio"], ultimo["moneda"])
+                    enlace = calendario.enlace_evento(origen, destino, fecha,
+                                                      ultimo["precio"], ultimo["moneda"],
+                                                      ultimo.get("aerolinea"))
+                    self._json({"evento_api": evento, "enlace": enlace, "fecha": fecha,
+                                "precio": ultimo["precio"], "moneda": ultimo["moneda"]})
+
+                elif url.path in ("/", "/panel.html"):
+                    self._responder(panel_path.read_bytes(), "text/html; charset=utf-8")
+                else:
+                    self.send_response(404)
+                    self.end_headers()
+            except Exception as exc:
+                self._json({"error": f"{exc.__class__.__name__}: {exc}"}, 500)
 
     servidor = ThreadingHTTPServer(("127.0.0.1", args.puerto), Manejador)
     print(f"📊 Panel disponible en http://127.0.0.1:{args.puerto}  (Ctrl+C para detener)")
