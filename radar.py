@@ -149,6 +149,17 @@ CIUDADES = {
 }
 
 
+# nombre legible por código IATA (para las respuestas del bot);
+# se omiten los alias cortos tipo "caj"
+NOMBRES_IATA = {iata: nombre.title() for nombre, iata in CIUDADES.items()
+                if len(nombre) > 3}
+
+
+def _con_nombre(iata: str) -> str:
+    nombre = NOMBRES_IATA.get(iata)
+    return f"{iata} ({nombre})" if nombre else iata
+
+
 def _sin_tildes(texto: str) -> str:
     import unicodedata
     return "".join(c for c in unicodedata.normalize("NFD", texto)
@@ -217,7 +228,8 @@ def responder_consulta(consulta: dict) -> str:
     for v in vuelos:
         db.guardar_precio(v)
     mejor = vuelos[0]
-    lineas = [f"✈️ <b>{consulta['origen']} → {consulta['destino']}</b>"]
+    lineas = [f"✈️ <b>{_con_nombre(consulta['origen'])} → "
+              f"{_con_nombre(consulta['destino'])}</b>"]
     for v in vuelos:
         lineas.append(f"• {v['fecha_salida']}: <b>{v['precio']:.0f} {v['moneda']}</b> "
                       f"({v['aerolinea']}, {v['escalas']} escalas)")
