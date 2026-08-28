@@ -132,6 +132,51 @@ def cmd_vigilar(args):
             break
 
 
+def cmd_panel(args):
+    """Panel web local: visualización del histórico y evolución de precios."""
+    import json
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    from urllib.parse import urlparse, parse_qs
+    from pathlib import Path
+
+    panel_path = Path(__file__).resolve().parent / "panel.html"
+
+    class Manejador(BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def _responder(self, cuerpo: bytes, tipo: str):
+            self.send_response(200)
+            self.send_header("Content-Type", tipo)
+            self.send_header("Content-Length", str(len(cuerpo)))
+            self.end_headers()
+            self.wfile.write(cuerpo)
+
+        def do_GET(self):
+            url = urlparse(self.path)
+            if url.path == "/api/historial":
+                q = parse_qs(url.query)
+                filas = db.historial(q.get("origen", ["LIM"])[0],
+                                     q.get("destino", ["CUZ"])[0])
+                moneda = filas[-1]["moneda"] if filas else "USD"
+                cuerpo = json.dumps({"historial": filas, "moneda": moneda}).encode()
+                self._responder(cuerpo, "application/json; charset=utf-8")
+            elif url.path in ("/", "/panel.html"):
+                self._responder(panel_path.read_bytes(), "text/html; charset=utf-8")
+            else:
+                self.send_response(404)
+                self.end_headers()
+
+    servidor = ThreadingHTTPServer(("127.0.0.1", args.puerto), Manejador)
+    print(f"📊 Panel disponible en http://127.0.0.1:{args.puerto}  (Ctrl+C para detener)")
+    try:
+        servidor.serve_forever()
+    except KeyboardInterrupt:
+        print("\n👋 Panel detenido.")
+    finally:
+        servidor.server_close()
+
+
 # --- Bot conversacional -------------------------------------------------
 CIUDADES = {
     "lima": "LIM", "cusco": "CUZ", "cuzco": "CUZ", "arequipa": "AQP",
@@ -350,6 +395,10 @@ def main():
     p.add_argument("--una-vez", action="store_true",
                    help="Una sola consulta (útil para cron/launchd)")
     p.set_defaults(func=cmd_vigilar)
+
+    p = sub.add_parser("panel", help="Panel web con la evolución de precios")
+    p.add_argument("--puerto", type=int, default=4700)
+    p.set_defaults(func=cmd_panel)
 
     p = sub.add_parser("escuchar", help="Bot conversacional: responde preguntas por Telegram")
     p.set_defaults(func=cmd_escuchar)

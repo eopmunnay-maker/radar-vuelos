@@ -11,7 +11,7 @@ Calendar** cuando el usuario decide viajar.
 
 - 🔎 **Consulta de ruta, fecha, precio, aerolínea y escalas** (API Aviasales/Travelpayouts v3).
 - 📒 **Histórico** de cada consulta en SQLite (`radar.db`).
-- 📈 **Visualización** de la evolución de precios (gráfico PNG, enviable por Telegram).
+- 📈 **Visualización** de la evolución de precios: panel web local (`panel`) + gráfico PNG enviable por Telegram.
 - 🚨 **Alertas automáticas** por bot de Telegram cuando el precio baja del umbral o cae ≥5%.
 - 🤖 **Bot conversacional**: pregúntale en lenguaje natural ("búscame un vuelo a jamaica") y responde con precios reales, guardando la consulta en el histórico.
 - 🗓️ **Google Calendar**: al decidir viajar, el agente **crea el evento vía la API oficial** (cuenta de servicio de Google Cloud); sin credenciales, propone un enlace pre-llenado para confirmar con un clic.
@@ -37,6 +37,9 @@ python radar.py historial LIM CUZ
 
 # 3. Gráfico de evolución de precios (y enviarlo por Telegram)
 python radar.py grafico LIM CUZ --telegram
+
+# 3b. Panel web con la evolución de precios (http://127.0.0.1:4700)
+python radar.py panel
 
 # 4. Bot conversacional: pregúntale por Telegram y te responde
 #    ("búscame un vuelo a jamaica", "vuelo de Lima a Cusco el 2026-09-15")

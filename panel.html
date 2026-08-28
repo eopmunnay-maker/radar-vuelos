@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Radar de Vuelos ✈️</title>
+<style>
+  :root {
+    --fondo: #0b1220; --tarjeta: #131c2e; --borde: #223049;
+    --texto: #e8eefb; --sutil: #8ea3c4; --acento: #4da3ff; --ok: #3ddc84;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--fondo); color: var(--texto); min-height: 100vh;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif; padding: 32px 20px;
+  }
+  .contenedor { max-width: 980px; margin: 0 auto; }
+  .etiqueta { color: var(--ok); letter-spacing: 2px; font-size: 12px; font-weight: 700; }
+  h1 { font-size: 42px; margin: 6px 0 4px; }
+  .sub { color: var(--sutil); margin-bottom: 24px; }
+  form { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 22px; }
+  input, button {
+    background: var(--tarjeta); border: 1px solid var(--borde); color: var(--texto);
+    border-radius: 10px; padding: 12px 14px; font-size: 15px;
+  }
+  input { width: 130px; text-transform: uppercase; }
+  button { background: var(--acento); color: #06101f; font-weight: 700; cursor: pointer; border: 0; padding: 12px 22px; }
+  .tarjetas { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .tarjeta { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 14px; padding: 16px; }
+  .tarjeta .titulo { color: var(--sutil); font-size: 12px; margin-bottom: 6px; }
+  .tarjeta .valor { font-size: 24px; font-weight: 800; }
+  .tarjeta .valor.verde { color: var(--ok); }
+  .caja { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 14px; padding: 18px; margin-bottom: 18px; }
+  .caja h2 { font-size: 15px; margin-bottom: 12px; color: var(--sutil); font-weight: 600; }
+  svg text { fill: var(--sutil); font-size: 11px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--borde); }
+  th { color: var(--sutil); font-weight: 600; font-size: 12px; }
+  .aviso { color: var(--sutil); padding: 20px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="contenedor">
+  <div class="etiqueta">RADAR DE VUELOS · PANEL</div>
+  <h1>Evolución de precios ✈️</h1>
+  <div class="sub">Histórico guardado en SQLite por el agente — Travelpayouts · Telegram · Google Calendar</div>
+
+  <form id="filtro">
+    <input id="origen" value="LIM" maxlength="3" aria-label="Origen">
+    <input id="destino" value="CUZ" maxlength="3" aria-label="Destino">
+    <button>Ver ruta</button>
+  </form>
+
+  <div class="tarjetas" id="tarjetas"></div>
+  <div class="caja"><h2 id="tituloGrafico">Evolución del precio mínimo</h2><div id="grafico" class="aviso">Cargando…</div></div>
+  <div class="caja"><h2>Últimas consultas</h2><div id="tabla" class="aviso">Cargando…</div></div>
+</div>
+
+<script>
+async function cargar() {
+  const o = document.getElementById("origen").value.trim().toUpperCase() || "LIM";
+  const d = document.getElementById("destino").value.trim().toUpperCase() || "CUZ";
+  const r = await fetch(`/api/historial?origen=${o}&destino=${d}`);
+  const datos = await r.json();
+  const filas = datos.historial || [];
+  pintarTarjetas(filas, datos.moneda);
+  pintarGrafico(filas, o, d);
+  pintarTabla(filas);
+}
+
+function pintarTarjetas(filas, moneda) {
+  const cont = document.getElementById("tarjetas");
+  if (!filas.length) { cont.innerHTML = ""; return; }
+  const precios = filas.map(f => f.precio);
+  const ultimo = filas[filas.length - 1].precio;
+  const fmt = v => `${Math.round(v)} ${moneda || "USD"}`;
+  cont.innerHTML = `
+    <div class="tarjeta"><div class="titulo">Último precio</div><div class="valor verde">${fmt(ultimo)}</div></div>
+    <div class="tarjeta"><div class="titulo">Mínimo</div><div class="valor">${fmt(Math.min(...precios))}</div></div>
+    <div class="tarjeta"><div class="titulo">Máximo</div><div class="valor">${fmt(Math.max(...precios))}</div></div>
+    <div class="tarjeta"><div class="titulo">Promedio</div><div class="valor">${fmt(precios.reduce((a,b)=>a+b,0)/precios.length)}</div></div>
+    <div class="tarjeta"><div class="titulo">Consultas</div><div class="valor">${filas.length}</div></div>`;
+}
+
+function pintarGrafico(filas, o, d) {
+  document.getElementById("tituloGrafico").textContent = `Evolución del precio mínimo · ${o} → ${d}`;
+  const cont = document.getElementById("grafico");
+  // precio mínimo por momento de consulta
+  const porMomento = {};
+  for (const f of filas) porMomento[f.consultado_en] = Math.min(porMomento[f.consultado_en] ?? Infinity, f.precio);
+  const puntos = Object.entries(porMomento).map(([t, p]) => ({ t, p }));
+  if (puntos.length < 2) { cont.innerHTML = '<div class="aviso">Aún hay pocas consultas para graficar — usa "buscar" o "vigilar" varias veces.</div>'; return; }
+
+  const W = 900, H = 300, m = { i: 55, d: 15, s: 15, b: 40 };
+  const xs = puntos.map((_, i) => m.i + i * (W - m.i - m.d) / (puntos.length - 1));
+  const min = Math.min(...puntos.map(q => q.p)), max = Math.max(...puntos.map(q => q.p));
+  const rango = (max - min) || 1;
+  const y = v => m.s + (H - m.s - m.b) * (1 - (v - min) / rango);
+  const linea = puntos.map((q, i) => `${xs[i]},${y(q.p).toFixed(1)}`).join(" ");
+  const area = `${m.i},${H - m.b} ${linea} ${xs[xs.length-1]},${H - m.b}`;
+  const ejes = [min, (min+max)/2, max].map(v =>
+    `<text x="8" y="${(y(v)+4).toFixed(1)}">${Math.round(v)}</text>
+     <line x1="${m.i}" x2="${W-m.d}" y1="${y(v)}" y2="${y(v)}" stroke="#223049" stroke-dasharray="3 4"/>`).join("");
+  const fechas = [0, puntos.length - 1].map(i =>
+    `<text x="${xs[i]}" y="${H-12}" text-anchor="${i ? "end" : "start"}">${puntos[i].t.slice(0,16).replace("T"," ")}</text>`).join("");
+  const marcas = puntos.map((q, i) =>
+    `<circle cx="${xs[i]}" cy="${y(q.p).toFixed(1)}" r="4" fill="#4da3ff"><title>${q.t}: ${q.p}</title></circle>`).join("");
+  cont.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%">
+    ${ejes}<polygon points="${area}" fill="#4da3ff22"/>
+    <polyline points="${linea}" fill="none" stroke="#4da3ff" stroke-width="2.5"/>${marcas}${fechas}</svg>`;
+}
+
+function pintarTabla(filas) {
+  const cont = document.getElementById("tabla");
+  if (!filas.length) { cont.innerHTML = '<div class="aviso">Sin consultas para esta ruta todavía.</div>'; return; }
+  const ult = filas.slice(-12).reverse();
+  cont.innerHTML = `<table><tr><th>Consultado</th><th>Vuelo del</th><th>Precio</th><th>Aerolínea</th><th>Escalas</th></tr>` +
+    ult.map(f => `<tr><td>${f.consultado_en.slice(0,16).replace("T"," ")}</td><td>${f.fecha_salida}</td>
+      <td><b>${Math.round(f.precio)} ${f.moneda}</b></td><td>${f.aerolinea ?? "—"}</td><td>${f.escalas ?? "—"}</td></tr>`).join("") + "</table>";
+}
+
+document.getElementById("filtro").addEventListener("submit", e => { e.preventDefault(); cargar(); });
+cargar();
+</script>
+</body>
+</html>
