@@ -132,6 +132,148 @@ def cmd_vigilar(args):
             break
 
 
+# --- Bot conversacional -------------------------------------------------
+CIUDADES = {
+    "lima": "LIM", "cusco": "CUZ", "cuzco": "CUZ", "arequipa": "AQP",
+    "trujillo": "TRU", "piura": "PIU", "iquitos": "IQT", "tarapoto": "TPP",
+    "cajamarca": "CJA", "caj": "CJA", "chiclayo": "CIX", "juliaca": "JUL",
+    "puerto maldonado": "PEM", "pucallpa": "PCL", "jauja": "JAU",
+    "jamaica": "KIN", "kingston": "KIN", "montego": "MBJ",
+    "miami": "MIA", "orlando": "MCO", "nueva york": "JFK", "new york": "JFK",
+    "cancun": "CUN", "mexico": "MEX", "bogota": "BOG", "medellin": "MDE",
+    "quito": "UIO", "guayaquil": "GYE", "santiago": "SCL",
+    "buenos aires": "EZE", "sao paulo": "GRU", "rio": "GIG",
+    "panama": "PTY", "habana": "HAV", "punta cana": "PUJ",
+    "madrid": "MAD", "barcelona": "BCN", "paris": "CDG", "roma": "FCO",
+    "los angeles": "LAX",
+}
+
+
+def _sin_tildes(texto: str) -> str:
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFD", texto)
+                   if unicodedata.category(c) != "Mn")
+
+
+def interpretar_consulta(texto: str) -> dict | None:
+    """Extrae origen, destino y fecha de una pregunta en lenguaje natural.
+
+    Entiende códigos IATA (LIM, CUZ...) y ciudades comunes. Si solo hay
+    un destino ("búscame un vuelo a jamaica"), asume origen LIM.
+    """
+    import re
+    limpio = _sin_tildes(texto.lower())
+
+    fecha = None
+    m = re.search(r"(\d{4}-\d{2}-\d{2})", limpio)
+    if m:
+        fecha = m.group(1)
+    else:
+        m = re.search(r"(\d{1,2})/(\d{1,2})/(\d{4})", limpio)
+        if m:
+            fecha = f"{m.group(3)}-{int(m.group(2)):02d}-{int(m.group(1)):02d}"
+
+    lugares = []
+    # patrón "de X a Y" con ciudades o códigos
+    for nombre, iata in CIUDADES.items():
+        pos = limpio.find(nombre)
+        if pos >= 0:
+            lugares.append((pos, iata))
+    for m in re.finditer(r"\b([A-Z]{3})\b", texto):
+        codigo = m.group(1)
+        if codigo not in {"USD", "PEN", "EUR"}:
+            lugares.append((m.start(), codigo))
+    lugares.sort(key=lambda x: x[0])
+    codigos = []
+    ultima_pos = -1
+    for pos, iata in lugares:
+        # si una ciudad conocida y un código IATA coinciden en la misma
+        # posición (ej. "CAJ" ↔ cajamarca→CJA), gana la ciudad conocida
+        if pos == ultima_pos or iata in codigos:
+            continue
+        codigos.append(iata)
+        ultima_pos = pos
+
+    if not codigos:
+        return None
+    if len(codigos) == 1:
+        origen, destino = "LIM", codigos[0]
+        if destino == "LIM":
+            return None
+    else:
+        origen, destino = codigos[0], codigos[1]
+    return {"origen": origen, "destino": destino, "fecha": fecha}
+
+
+def responder_consulta(consulta: dict) -> str:
+    """Busca vuelos para la consulta interpretada y arma la respuesta."""
+    vuelos = travelpayouts.buscar_vuelos(consulta["origen"], consulta["destino"],
+                                         consulta["fecha"], limite=3)
+    if not vuelos:
+        cuando = f" para {consulta['fecha']}" if consulta["fecha"] else ""
+        return (f"😕 No encontré precios de {consulta['origen']} → "
+                f"{consulta['destino']}{cuando} en este momento. "
+                "Prueba otra fecha o ruta.")
+    for v in vuelos:
+        db.guardar_precio(v)
+    mejor = vuelos[0]
+    lineas = [f"✈️ <b>{consulta['origen']} → {consulta['destino']}</b>"]
+    for v in vuelos:
+        lineas.append(f"• {v['fecha_salida']}: <b>{v['precio']:.0f} {v['moneda']}</b> "
+                      f"({v['aerolinea']}, {v['escalas']} escalas)")
+    if mejor.get("link"):
+        lineas.append(f"🔗 <a href=\"{mejor['link']}\">Ver el más barato</a>")
+    enlace = calendario.enlace_evento(mejor["origen"], mejor["destino"],
+                                      mejor["fecha_salida"], mejor["precio"],
+                                      mejor["moneda"], mejor["aerolinea"])
+    lineas.append(f"🗓️ ¿Decidido a viajar? <a href=\"{enlace}\">Agregar a Google Calendar</a>")
+    return "\n".join(lineas)
+
+
+def cmd_escuchar(args):
+    """Bot conversacional: responde preguntas de vuelos por Telegram."""
+    _aviso_demo()
+    print("🤖 Bot escuchando en Telegram. Pregúntale, por ejemplo:")
+    print('   "búscame un vuelo a jamaica"')
+    print('   "vuelo de LIM a CUZ el 2026-09-15"')
+    print("   Ctrl+C para detener\n")
+    offset = 0
+    while True:
+        try:
+            mensajes = telegram_bot.obtener_mensajes(offset)
+        except KeyboardInterrupt:
+            print("\n👋 Bot detenido.")
+            return
+        except Exception as e:
+            print(f"(reintentando: {e})")
+            time.sleep(3)
+            continue
+        for m in mensajes:
+            offset = m["update_id"] + 1
+            if not m["texto"]:
+                continue
+            print(f"[{time.strftime('%H:%M:%S')}] pregunta: {m['texto']}")
+            consulta = interpretar_consulta(m["texto"])
+            if not consulta:
+                telegram_bot.enviar_mensaje(
+                    "🤖 No entendí la ruta. Pregúntame así:\n"
+                    "• búscame un vuelo a jamaica\n"
+                    "• vuelo de Lima a Cusco el 2026-09-15\n"
+                    "• vuelo de LIM a MIA")
+                continue
+            try:
+                respuesta = responder_consulta(consulta)
+            except Exception:
+                respuesta = (f"😕 No pude consultar {consulta['origen']} → "
+                             f"{consulta['destino']} (¿la ruta o el código existe?). "
+                             "Intenta con otra ciudad o código IATA.")
+            try:
+                telegram_bot.enviar_mensaje(respuesta)
+                print(f"   → respondido: {consulta['origen']} → {consulta['destino']}")
+            except Exception as e:
+                print(f"   (no se pudo responder: {e})")
+
+
 def cmd_viajar(args):
     """El usuario decidió viajar: propone el evento en Google Calendar."""
     origen, destino = args.origen.upper(), args.destino.upper()
@@ -196,6 +338,9 @@ def main():
     p.add_argument("--una-vez", action="store_true",
                    help="Una sola consulta (útil para cron/launchd)")
     p.set_defaults(func=cmd_vigilar)
+
+    p = sub.add_parser("escuchar", help="Bot conversacional: responde preguntas por Telegram")
+    p.set_defaults(func=cmd_escuchar)
 
     p = sub.add_parser("viajar", help="Propone el evento del viaje en Google Calendar")
     p.add_argument("origen"); p.add_argument("destino"); p.add_argument("fecha")

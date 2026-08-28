@@ -13,6 +13,7 @@ Calendar** cuando el usuario decide viajar.
 - 📒 **Histórico** de cada consulta en SQLite (`radar.db`).
 - 📈 **Visualización** de la evolución de precios (gráfico PNG, enviable por Telegram).
 - 🚨 **Alertas automáticas** por bot de Telegram cuando el precio baja del umbral o cae ≥5%.
+- 🤖 **Bot conversacional**: pregúntale en lenguaje natural ("búscame un vuelo a jamaica") y responde con precios reales, guardando la consulta en el histórico.
 - 🗓️ **Google Calendar**: al decidir viajar, el agente propone el evento (enlace directo, o creación automática vía API si configuras credenciales).
 - 🧪 **Modo demo**: sin API keys genera precios simulados para probar todo el flujo.
 
@@ -37,13 +38,17 @@ python radar.py historial LIM CUZ
 # 3. Gráfico de evolución de precios (y enviarlo por Telegram)
 python radar.py grafico LIM CUZ --telegram
 
-# 4. Vigilar la ruta: consulta cada hora y alerta por Telegram
+# 4. Bot conversacional: pregúntale por Telegram y te responde
+#    ("búscame un vuelo a jamaica", "vuelo de Lima a Cusco el 2026-09-15")
+python radar.py escuchar
+
+# 5. Vigilar la ruta: consulta cada hora y alerta por Telegram
 python radar.py vigilar LIM CUZ 2026-09-15 --umbral 120 --intervalo 3600
 
 # (para cron/launchd: una sola pasada)
 python radar.py vigilar LIM CUZ 2026-09-15 --umbral 120 --una-vez
 
-# 5. Decidí viajar → proponer evento en Google Calendar
+# 6. Decidí viajar → proponer evento en Google Calendar
 python radar.py viajar LIM CUZ 2026-09-15
 ```
 

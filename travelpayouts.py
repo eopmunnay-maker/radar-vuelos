@@ -9,6 +9,7 @@ flujo (histórico, gráfico, alertas) sin credenciales.
 """
 import hashlib
 import time
+from datetime import date, timedelta
 
 import requests
 
@@ -19,26 +20,30 @@ API_URL = "https://api.travelpayouts.com/aviasales/v3/prices_for_dates"
 AEROLINEAS_DEMO = ["LA", "H2", "JA", "AV", "CM", "SK"]
 
 
-def buscar_vuelos(origen: str, destino: str, fecha: str, limite: int = 5) -> list[dict]:
-    """Consulta precios para una ruta y fecha. Devuelve lista de vuelos
-    normalizados: origen, destino, fecha_salida, precio, moneda,
-    aerolinea, escalas, link.
+def buscar_vuelos(origen: str, destino: str, fecha: str | None = None,
+                  limite: int = 5) -> list[dict]:
+    """Consulta precios para una ruta y fecha. Con fecha=None busca las
+    mejores fechas disponibles. Devuelve lista de vuelos normalizados:
+    origen, destino, fecha_salida, precio, moneda, aerolinea, escalas, link.
     """
     origen, destino = origen.upper(), destino.upper()
     if MODO_DEMO:
-        return _vuelos_demo(origen, destino, fecha, limite)
+        fecha_demo = fecha or (date.today() + timedelta(days=30)).isoformat()
+        return _vuelos_demo(origen, destino, fecha_demo, limite)
 
+    params = {
+        "origin": origen,
+        "destination": destino,
+        "currency": MONEDA,
+        "sorting": "price",
+        "limit": limite,
+        "one_way": "true",
+    }
+    if fecha:
+        params["departure_at"] = fecha
     resp = requests.get(
         API_URL,
-        params={
-            "origin": origen,
-            "destination": destino,
-            "departure_at": fecha,
-            "currency": MONEDA,
-            "sorting": "price",
-            "limit": limite,
-            "one_way": "true",
-        },
+        params=params,
         headers={"X-Access-Token": TRAVELPAYOUTS_TOKEN},
         timeout=30,
     )

@@ -29,6 +29,29 @@ def enviar_mensaje(texto: str) -> bool:
     return True
 
 
+def obtener_mensajes(offset: int, espera: int = 25) -> list[dict]:
+    """Long polling de getUpdates: devuelve los mensajes nuevos del chat
+    configurado como [{update_id, texto}]."""
+    if not TELEGRAM_BOT_TOKEN:
+        return []
+    resp = requests.get(
+        API.format(token=TELEGRAM_BOT_TOKEN, metodo="getUpdates"),
+        params={"offset": offset, "timeout": espera},
+        timeout=espera + 10,
+    )
+    resp.raise_for_status()
+    mensajes = []
+    for upd in resp.json().get("result", []):
+        msj = upd.get("message") or {}
+        chat = str((msj.get("chat") or {}).get("id", ""))
+        texto = msj.get("text")
+        if chat == TELEGRAM_CHAT_ID and isinstance(texto, str):
+            mensajes.append({"update_id": upd["update_id"], "texto": texto})
+        else:
+            mensajes.append({"update_id": upd["update_id"], "texto": None})
+    return mensajes
+
+
 def enviar_foto(ruta_imagen: str, caption: str = "") -> bool:
     """Envía una imagen (p. ej. el gráfico de evolución de precios)."""
     if not _configurado():
