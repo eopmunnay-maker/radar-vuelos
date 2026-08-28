@@ -30,7 +30,9 @@ cp .env.example .env   # y completa tus credenciales (opcional)
 
 ```bash
 # 1. Buscar precios (consulta + guarda histórico)
+#    Acepta códigos IATA o nombres de ciudad
 python radar.py buscar LIM CUZ 2026-09-15
+python radar.py buscar lima cusco 2026-09-15
 
 # 2. Ver el histórico de la ruta
 python radar.py historial LIM CUZ

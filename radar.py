@@ -211,6 +211,21 @@ def _sin_tildes(texto: str) -> str:
                    if unicodedata.category(c) != "Mn")
 
 
+def a_iata(valor: str) -> str:
+    """Convierte una ciudad o código a IATA: 'cusco' → CUZ, 'lim' → LIM.
+
+    Para ciudades de dos palabras usa guion o comillas: buenos-aires.
+    """
+    limpio = _sin_tildes(valor.strip().lower().replace("-", " ").replace("_", " "))
+    if limpio in CIUDADES:
+        return CIUDADES[limpio]
+    if len(limpio) == 3 and limpio.isalpha():
+        return limpio.upper()
+    conocidas = ", ".join(sorted(n for n in CIUDADES if len(n) > 3))
+    raise SystemExit(f"❌ No reconozco '{valor}'. Usa un código IATA (ej. LIM) "
+                     f"o una de estas ciudades:\n{conocidas}")
+
+
 def interpretar_consulta(texto: str) -> dict | None:
     """Extrae origen, destino y fecha de una pregunta en lenguaje natural.
 
@@ -408,6 +423,11 @@ def main():
     p.set_defaults(func=cmd_viajar)
 
     args = parser.parse_args()
+    # acepta ciudades o códigos IATA en todos los comandos
+    if hasattr(args, "origen"):
+        args.origen = a_iata(args.origen)
+    if hasattr(args, "destino"):
+        args.destino = a_iata(args.destino)
     args.func(args)
 
 
